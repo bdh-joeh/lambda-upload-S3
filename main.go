@@ -76,7 +76,7 @@ func errorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, e
 	return apigw.ErrorResponse(statusCode, err.Error()), nil
 }
 
-func Handler(request events.APIGatewayProxyRequest, ctx context.Context, event json.RawMessage) (events.APIGatewayProxyResponse, error) {
+func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
 	log.Printf("Handling request: %s\n", request.Resource)
 
@@ -85,31 +85,16 @@ func Handler(request events.APIGatewayProxyRequest, ctx context.Context, event j
 		return errorResponse(http.StatusUnauthorized, errors.New("authentication token is missing"))
 	}
 
-	// get IP for audit
-	ip, err := getIP(request)
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, err)
-	}
-
-	// get the user session, refresh if valid
-	session, statusCode, err := getAndRefreshSession(sessionsRedisClient, request)
-	if err != nil {
-		return errorResponse(statusCode, err)
-	}
-
-    // Convert incoming event (JSON) to string
-    jsonData := string(event)
-
     // Validate the JSON structure
-    if err := validateJSON(jsonData); err != nil {
-        return "", err
+    if err := validateJSON(request.Body); err != nil {
+        return errorResponse(500, err)
     }
 
     // Create an S3 uploader instance
     bucketName := os.Getenv("BUCKET_NAME") // Use the S3 bucket name from environment variables
     uploader, err := NewS3Uploader(bucketName)
     if err != nil {
-        return "", fmt.Errorf("failed to create S3 uploader: %v", err)
+        return errorResponse(500, err)
     }
 
     // Create a unique file name based on the current timestamp
@@ -117,11 +102,18 @@ func Handler(request events.APIGatewayProxyRequest, ctx context.Context, event j
     fileName := fmt.Sprintf("actions/user_action_%s.json", timestamp)
 
     // Upload the validated JSON string to S3
-    if err = uploader.UploadJSON(fileName, jsonData); err != nil {
-        return "", fmt.Errorf("failed to upload JSON to S3: %v", err)
+    if err = uploader.UploadJSON(fileName, request.Body); err != nil {
+        return errorResponse(500, err)
     }
 
-    return fmt.Sprintf("Data uploaded successfully to S3: %s/%s", bucketName, fileName), nil
+    return events.APIGatewayProxyResponse{
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		Body:            request.Body,
+		StatusCode:      200,
+		IsBase64Encoded: true,
+	}, nil
 }
 
 func main() {
