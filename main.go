@@ -16,9 +16,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bootsdigitalhealth/go-aws/apigw"
+	"github.com/bootsdigitalhealth/go-aws/secret"
+	"github.com/bootsdigitalhealth/go-db/redis"
 
 	"github.com/aws/aws-lambda-go/events"
 
+)
+
+var (
+	dbIsReader              = false
+	sessionsRedisClient     *redis.Client
+	secretCache             *secret.Cache
+	UPDATED                 = 10
 )
 
 // S3Uploader is a wrapper for S3 client
@@ -26,7 +35,6 @@ type S3Uploader struct {
 	client *s3.Client
 	bucket string
 }
-
 
 func validateJSON(jsonData string) error {
     var temp interface{}
@@ -66,7 +74,7 @@ func (u *S3Uploader) UploadJSON(key string, data string) error {
 	_, err := u.client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(u.bucket),
 		Key:         aws.String(key),
-		Body:        strings.NewReader(data), // Use strings.NewReader here
+		Body:        strings.NewReader(data),
 		ContentType: aws.String("application/json"),
 	})
 	return err
@@ -83,6 +91,17 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	// check authorization
 	if len(request.Headers["Authorization"]) == 0 {
 		return errorResponse(http.StatusUnauthorized, errors.New("authentication token is missing"))
+	}
+
+	// set up DB, Redis, etc
+	if err := initialize(dbIsReader); err != nil {
+		return errorResponse(http.StatusInternalServerError, err)
+	}
+
+	// get the user session, refresh if valid
+	statusCode, err := getSession(sessionsRedisClient, request)
+	if err != nil {
+		return errorResponse(statusCode, err)
 	}
 
     // Validate the JSON structure
@@ -114,6 +133,49 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		StatusCode:      200,
 		IsBase64Encoded: true,
 	}, nil
+}
+
+func getSession(sessionsRedisClient *redis.Client, request events.APIGatewayProxyRequest) (int, error) {
+	var session redis.Session
+	var err error
+
+	// get session from auth token, includes userID
+	session, err = sessionsRedisClient.GetSession(request.Headers["Authorization"])
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	if session.UserID == 0 {
+		return http.StatusUnauthorized, errors.New("invalid authentication token")
+	}
+
+	return 0, nil
+}
+
+func initialize(dbIsReader bool) error {
+	var err error
+
+	if secretCache == nil {
+		secretCache, err = secret.New()
+		if err != nil {
+			return err
+		}
+	}
+
+	if sessionsRedisClient == nil {
+
+		redisSecret, err := secretCache.GetSecretStringAsMap(os.Getenv("REDIS_SECRET"))
+		if err != nil {
+			return err
+		}
+
+		sessionsRedisClient, err = redis.NewClient(redisSecret, "sessions_db")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 func main() {
