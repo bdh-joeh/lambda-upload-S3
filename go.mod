@@ -7,7 +7,6 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.66.0
-	github.com/bootsdigitalhealth/go-auth v1.6.0
 	github.com/bootsdigitalhealth/go-aws v1.6.0
 	github.com/bootsdigitalhealth/go-db v1.6.0
 )
@@ -31,7 +30,5 @@ require (
 	github.com/aws/aws-secretsmanager-caching-go v1.1.0 // indirect
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/tredoe/osutil v1.0.4 // indirect
 )

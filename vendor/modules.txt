@@ -174,10 +174,6 @@ github.com/aws/smithy-go/tracing
 github.com/aws/smithy-go/transport/http
 github.com/aws/smithy-go/transport/http/internal/io
 github.com/aws/smithy-go/waiter
-# github.com/bootsdigitalhealth/go-auth v1.6.0
-## explicit; go 1.14
-github.com/bootsdigitalhealth/go-auth/password
-github.com/bootsdigitalhealth/go-auth/sessions
 # github.com/bootsdigitalhealth/go-aws v1.6.0
 ## explicit; go 1.14
 github.com/bootsdigitalhealth/go-aws/apigw
@@ -194,14 +190,6 @@ github.com/go-redis/redis/internal/hashtag
 github.com/go-redis/redis/internal/pool
 github.com/go-redis/redis/internal/proto
 github.com/go-redis/redis/internal/util
-# github.com/golang-jwt/jwt v3.2.2+incompatible
-## explicit
-github.com/golang-jwt/jwt
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/tredoe/osutil v1.0.4
-## explicit; go 1.13
-github.com/tredoe/osutil/user/crypt
-github.com/tredoe/osutil/user/crypt/common
-github.com/tredoe/osutil/user/crypt/sha512_crypt

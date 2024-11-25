@@ -98,11 +98,16 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse(http.StatusInternalServerError, err)
 	}
 
-	// get the user session, refresh if valid
-	statusCode, err := getSession(sessionsRedisClient, request)
+	// get session from auth token, includes userID
+	session, err := sessionsRedisClient.GetSession(request.Headers["Authorization"])
 	if err != nil {
-		return errorResponse(statusCode, err)
+		return errorResponse(http.StatusInternalServerError, err)
 	}
+	if session.UserID == 0 {
+		return errorResponse(http.StatusInternalServerError, err)
+	}
+
+	log.Printf("Printing UserID: %v", session.UserID)
 
     // Validate the JSON structure
     if err := validateJSON(request.Body); err != nil {
@@ -133,22 +138,6 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		StatusCode:      200,
 		IsBase64Encoded: true,
 	}, nil
-}
-
-func getSession(sessionsRedisClient *redis.Client, request events.APIGatewayProxyRequest) (int, error) {
-	var session redis.Session
-	var err error
-
-	// get session from auth token, includes userID
-	session, err = sessionsRedisClient.GetSession(request.Headers["Authorization"])
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	if session.UserID == 0 {
-		return http.StatusUnauthorized, errors.New("invalid authentication token")
-	}
-
-	return 0, nil
 }
 
 func initialize(dbIsReader bool) error {
