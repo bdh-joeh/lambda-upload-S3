@@ -121,9 +121,8 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
         return errorResponse(500, err)
     }
 
-    // Create a unique file name based on the current timestamp
-    timestamp := time.Now().Format("2006-01-02_15-04-05")
-    fileName := fmt.Sprintf("actions/user_action_%s.json", timestamp)
+    fileName := fmt.Sprintf("actions/%d/%d/%d/%v_%d_activityType.json",
+	 time.Now().Year(), time.Now().Month(), time.Now().Day(), time.Now().Format("15:04:05"), session.UserID)
 
     // Upload the validated JSON string to S3
     if err = uploader.UploadJSON(fileName, request.Body); err != nil {
